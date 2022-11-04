@@ -22,7 +22,7 @@ class URLHandler(RenderingHandler):
     """Renderer for /url or /urls"""
 
     async def get_notebook_data(self, secure, netloc, url):
-        proto = "http" + secure
+        proto = f"http{secure}"
         netloc = url_unescape(netloc)
 
         if "/?" in url:
@@ -30,22 +30,22 @@ class URLHandler(RenderingHandler):
         else:
             query = None
 
-        remote_url = "{}://{}/{}".format(proto, netloc, quote(url))
+        remote_url = f"{proto}://{netloc}/{quote(url)}"
 
         if query:
-            remote_url = remote_url + "?" + query
+            remote_url = f"{remote_url}?{query}"
         if not url.endswith(".ipynb"):
             # this is how we handle relative links (files/ URLs) in notebooks
             # if it's not a .ipynb URL and it is a link from a notebook,
             # redirect to the original URL rather than trying to render it as a notebook
             refer_url = self.request.headers.get("Referer", "").split("://")[-1]
-            if refer_url.startswith(self.request.host + "/url"):
+            if refer_url.startswith(f"{self.request.host}/url"):
                 self.redirect(remote_url)
                 return
 
         parse_result = urlparse(remote_url)
 
-        robots_url = parse_result.scheme + "://" + parse_result.netloc + "/robots.txt"
+        robots_url = f"{parse_result.scheme}://{parse_result.netloc}/robots.txt"
 
         public = False  # Assume non-public
 
@@ -57,9 +57,7 @@ class URLHandler(RenderingHandler):
             rfp.parse(robotstxt.splitlines())
             public = rfp.can_fetch("*", remote_url)
         except httpclient.HTTPError as e:
-            self.log.debug(
-                "Robots.txt not available for {}".format(remote_url), exc_info=True
-            )
+            self.log.debug(f"Robots.txt not available for {remote_url}", exc_info=True)
             public = True
         except Exception as e:
             self.log.error(e)
@@ -78,7 +76,7 @@ class URLHandler(RenderingHandler):
         await self.finish_notebook(
             nbjson,
             download_url=remote_url,
-            msg="file from url: %s" % remote_url,
+            msg=f"file from url: {remote_url}",
             public=public,
             request=self.request,
         )

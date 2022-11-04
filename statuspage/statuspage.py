@@ -38,10 +38,11 @@ def post_data(limit, remaining, **ignore):
         url,
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": "OAuth " + api_key,
+            "Authorization": f"OAuth {api_key}",
         },
         data={"data[timestamp]": now, "data[value]": percent},
     )
+
     r.raise_for_status()
 
 
@@ -55,6 +56,6 @@ while True:
     try:
         get_and_post()
     except Exception as e:
-        print("Error: %s" % e, file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
     # post every two minutes
     time.sleep(120)

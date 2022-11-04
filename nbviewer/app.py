@@ -434,7 +434,7 @@ class NBViewer(Application):
             memcache_urls = tcp_memcache.split("tcp://")[1]
         if self.no_cache:
             self.log.info("Not using cache")
-            cache = MockCache()
+            return MockCache()
         elif pylibmc and memcache_urls:
             # setup memcache
             mc_pool = ThreadPoolExecutor(self.mc_threads)
@@ -449,12 +449,10 @@ class NBViewer(Application):
             else:
                 self.log.info("Using plain memcache")
 
-            cache = AsyncMultipartMemcache(memcache_urls.split(","), **kwargs)
+            return AsyncMultipartMemcache(memcache_urls.split(","), **kwargs)
         else:
             self.log.info("Using in-memory cache")
-            cache = DummyAsyncCache()
-
-        return cache
+            return DummyAsyncCache()
 
     @cached_property
     def default_endpoint(self):
@@ -551,40 +549,37 @@ class NBViewer(Application):
 
     @cached_property
     def pool(self):
-        if self.processes:
-            pool = ProcessPoolExecutor(self.processes)
-        else:
-            pool = ThreadPoolExecutor(self.threads)
-        return pool
+        return (
+            ProcessPoolExecutor(self.processes)
+            if self.processes
+            else ThreadPoolExecutor(self.threads)
+        )
 
     @cached_property
     def rate_limiter(self):
-        rate_limiter = RateLimiter(
-            limit=self.rate_limit, interval=self.rate_limit_interval, cache=self.cache
+        return RateLimiter(
+            limit=self.rate_limit,
+            interval=self.rate_limit_interval,
+            cache=self.cache,
         )
-        return rate_limiter
 
     @cached_property
     def static_paths(self):
         default_static_path = pjoin(here, "static")
         if self.static_path:
-            self.log.info("Using custom static path {}".format(self.static_path))
-            static_paths = [self.static_path, default_static_path]
+            self.log.info(f"Using custom static path {self.static_path}")
+            return [self.static_path, default_static_path]
         else:
-            static_paths = [default_static_path]
-
-        return static_paths
+            return [default_static_path]
 
     @cached_property
     def template_paths(self):
         default_template_path = pjoin(here, "templates")
         if self.template_path:
-            self.log.info("Using custom template path {}".format(self.template_path))
-            template_paths = [self.template_path, default_template_path]
+            self.log.info(f"Using custom template path {self.template_path}")
+            return [self.template_path, default_template_path]
         else:
-            template_paths = [default_template_path]
-
-        return template_paths
+            return [default_template_path]
 
     def configure_formats(self, formats=None):
         """
@@ -743,7 +738,7 @@ class NBViewer(Application):
             answer = ""
 
             def ask():
-                prompt = "Overwrite %s with default config? [y/N]" % self.config_file
+                prompt = f"Overwrite {self.config_file} with default config? [y/N]"
                 try:
                     return input(prompt).lower() or "n"
                 except KeyboardInterrupt:
@@ -761,7 +756,7 @@ class NBViewer(Application):
         config_text = self.generate_config_file()
         if isinstance(config_text, bytes):
             config_text = config_text.decode("utf8")
-        print("Writing default config to: %s" % self.config_file)
+        print(f"Writing default config to: {self.config_file}")
         with open(self.config_file, mode="w") as f:
             f.write(config_text)
         self.exit("Wrote default config file.")

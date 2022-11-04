@@ -22,7 +22,7 @@ class NoSearch(Indexer):
         pass
 
     def index_notebook(self, notebook_url, notebook_contents, *args, **kwargs):
-        app_log.debug('Totally not indexing "{}"'.format(notebook_url))
+        app_log.debug(f'Totally not indexing "{notebook_url}"')
 
 
 class ElasticSearch(Indexer):
@@ -43,12 +43,6 @@ class ElasticSearch(Indexer):
             index="notebooks", doc_type="ipynb", body=body, id=notebook_id.hex
         )
         if resp["created"]:
-            app_log.info(
-                "Created new indexed notebook={}, public={}".format(
-                    notebook_url, public
-                )
-            )
+            app_log.info(f"Created new indexed notebook={notebook_url}, public={public}")
         else:
-            app_log.info(
-                "Indexing old notebook={}, public={}".format(notebook_url, public)
-            )
+            app_log.info(f"Indexing old notebook={notebook_url}, public={public}")

@@ -64,28 +64,20 @@ class DummyAsyncCache(object):
 
     def _get(self, key):
         value, deadline = self._cache.get(key, (None, None))
-        if deadline and deadline < monotonic():
-            self._cache.pop(key)
-            self._cache_order.remove(key)
-        else:
+        if not deadline or deadline >= monotonic():
             return value
+        self._cache.pop(key)
+        self._cache_order.remove(key)
 
     async def set(self, key, value, expires=0):
         if key in self._cache and self._cache_order[-1] != key:
             idx = self._cache_order.index(key)
             del self._cache_order[idx]
-            self._cache_order.append(key)
-        else:
-            if len(self._cache) >= self.limit:
-                oldest = self._cache_order.pop(0)
-                self._cache.pop(oldest)
-            self._cache_order.append(key)
-
-        if not expires:
-            deadline = None
-        else:
-            deadline = monotonic() + expires
-
+        elif len(self._cache) >= self.limit:
+            oldest = self._cache_order.pop(0)
+            self._cache.pop(oldest)
+        self._cache_order.append(key)
+        deadline = monotonic() + expires if expires else None
         self._cache[key] = (value, deadline)
         f = Future()
         f.set_result(True)
@@ -189,10 +181,12 @@ class AsyncMultipartMemcache(AsyncMemcache):
         offsets = range(0, len(compressed), chunk_size)
         app_log.debug("storing %s in %i chunks", key, len(offsets))
         if len(offsets) > self.max_chunks:
-            raise ValueError("file is too large: %sB" % len(compressed))
-        values = {}
-        for idx, offset in enumerate(offsets):
-            values[("%s.%i" % (key, idx)).encode()] = compressed[
+            raise ValueError(f"file is too large: {len(compressed)}B")
+        values = {
+            ("%s.%i" % (key, idx)).encode(): compressed[
                 offset : offset + chunk_size
             ]
+            for idx, offset in enumerate(offsets)
+        }
+
         return await self._call_in_thread("set_multi", values, *args, **kwargs)

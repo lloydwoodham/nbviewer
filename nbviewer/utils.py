@@ -74,7 +74,7 @@ def url_path_join(*pieces):
     stripped = [s.strip("/") for s in pieces]
     result = "/".join(s for s in stripped if s)
     if initial:
-        result = "/" + result
+        result = f"/{result}"
     if final:
         result += "/"
     if result == "//":
@@ -91,15 +91,14 @@ def transform_ipynb_uri(uri, uri_rewrite_list):
     :param uri_rewrite_list: list of (URI regexes, URL templates) tuples
     """
     for reg, rewrite in uri_rewrite_list:
-        matches = re.match(reg, uri)
-        if matches:
+        if matches := re.match(reg, uri):
             uri = rewrite.format(*matches.groups())
             break
 
     # encode query parameters as last url part
     if "?" in uri:
         uri, query = uri.split("?", 1)
-        uri = "%s/%s" % (uri, quote("?" + query))
+        uri = f'{uri}/{quote(f"?{query}")}'
 
     return uri
 
@@ -158,8 +157,6 @@ def parse_header_links(value):
         except ValueError:
             url, params = val, ""
 
-        link = {}
-
         parts = list(urlparse(url.strip("<> '\"")))
 
         get_params = parse_qs(parts[4])
@@ -171,8 +168,7 @@ def parse_header_links(value):
         }
         parts[4] = urlencode(get_params)
 
-        link["url"] = urlunparse(parts)
-
+        link = {"url": urlunparse(parts)}
         for param in params.split(";"):
             try:
                 key, value = param.split("=")
@@ -211,8 +207,7 @@ def base64_decode(s):
     """
     if not isinstance(s, bytes):
         s = s.encode("ascii", "replace")
-    decoded = decodebytes(s)
-    return decoded
+    return decodebytes(s)
 
 
 def base64_encode(s):

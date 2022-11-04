@@ -36,7 +36,7 @@ class GithubClientTest(AsyncTestCase):
             return
         self.assertTrue(
             string.startswith(beginning),
-            "%s does not start with %s" % (string, beginning),
+            f"{string} does not start with {beginning}",
         )
 
     def test_basic_fetch(self):
@@ -101,7 +101,7 @@ class GithubClientTest(AsyncTestCase):
         gist_id = "ap90avn23iovv2ovn2309n"
         self.gh_client.get_gist(gist_id)
         url = self._get_url()
-        correct_url = "https://api.github.com/gists/" + gist_id
+        correct_url = f"https://api.github.com/gists/{gist_id}"
         self.assertStartsWith(url, correct_url)
 
     def test_get_gists(self):

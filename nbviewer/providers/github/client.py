@@ -44,7 +44,7 @@ class AsyncGitHubClient(object):
     def fetch(self, url, params=None, **kwargs):
         """Add GitHub auth to self.client.fetch"""
         if not url.startswith(self.github_api_url):
-            raise ValueError("Only fetch GitHub urls with GitHub auth (%s)" % url)
+            raise ValueError(f"Only fetch GitHub urls with GitHub auth ({url})")
         params = {} if params is None else params
         kwargs.setdefault("user_agent", "Tornado-Async-GitHub-Client")
 
@@ -97,10 +97,7 @@ class AsyncGitHubClient(object):
             self.log.error("GitHub rate limit (%s) exceeded: %s", limit, message)
             return
 
-        if 10 * remaining > limit:
-            log = self.log.info
-        else:
-            log = self.log.warn
+        log = self.log.info if 10 * remaining > limit else self.log.warn
         log("%i/%i GitHub API requests remaining", remaining, limit)
 
     def github_api_request(self, path, **kwargs):
@@ -114,7 +111,7 @@ class AsyncGitHubClient(object):
 
     def get_gist(self, gist_id, **kwargs):
         """Get a gist"""
-        path = "gists/{}".format(gist_id)
+        path = f"gists/{gist_id}"
         return self.github_api_request(path, **kwargs)
 
     def get_contents(self, user, repo, path, ref=None, **kwargs):
@@ -149,8 +146,7 @@ class AsyncGitHubClient(object):
         if recursive:
             params = kwargs.setdefault("params", {})
             params["recursive"] = True
-        tree = self.github_api_request(path, **kwargs)
-        return tree
+        return self.github_api_request(path, **kwargs)
 
     def get_branches(self, user, repo, **kwargs):
         """List a repo's branches"""

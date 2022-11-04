@@ -22,10 +22,7 @@ class RateLimiter(object):
         We don't need to be perfect.
         """
         agent = handler.request.headers.get("User-Agent", "")
-        return "rate-limit:{}:{}".format(
-            handler.request.remote_ip,
-            hashlib.md5(agent.encode("utf8", "replace")).hexdigest(),
-        )
+        return f'rate-limit:{handler.request.remote_ip}:{hashlib.md5(agent.encode("utf8", "replace")).hexdigest()}'
 
     async def check(self, handler):
         """Check the rate limit for a handler.

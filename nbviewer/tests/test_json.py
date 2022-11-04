@@ -19,7 +19,7 @@ class JSONTestCase(TestCase):
         try:
             json.load(open(os.path.join(ROOT, self.json), "r"))
         except Exception as err:
-            self.fail("%s failed to parse:  %s" % (self.json, err))
+            self.fail(f"{self.json} failed to parse:  {err}")
 
     def test_schema(self):
         if not self.schema:
@@ -30,9 +30,7 @@ class JSONTestCase(TestCase):
             schema = json.load(open(os.path.join(ROOT, self.schema), "r"))
             validate(data, schema)
         except Exception as err:
-            self.fail(
-                "%s failed to validate against %s:  %s" % (self.json, self.schema, err)
-            )
+            self.fail(f"{self.json} failed to validate against {self.schema}:  {err}")
 
 
 class FrontpageJSONTestCase(JSONTestCase):

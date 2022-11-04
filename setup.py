@@ -17,7 +17,7 @@ import versioneer
 
 def sh(cmd):
     """Run a command, echoing what command is to be run"""
-    log.info("Running command %s" % " ".join(map(pipes.quote, cmd)))
+    log.info(f'Running command {" ".join(map(pipes.quote, cmd))}')
     check_call(cmd)
 
 
@@ -45,8 +45,7 @@ def walk_subpkg(name):
         sub_dir = os.sep.join(
             parent.split(os.sep)[1:]
         )  # remove package_dir from the path
-        for f in files:
-            data_files.append(os.path.join(sub_dir, f))
+        data_files.extend(os.path.join(sub_dir, f) for f in files)
     return data_files
 
 

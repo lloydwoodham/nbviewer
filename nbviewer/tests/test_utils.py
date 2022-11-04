@@ -67,7 +67,7 @@ def test_transform_ipynb_uri():
         nt.assert_equal(
             output,
             expected_output,
-            "%s => %s != %s" % (ipynb_uri, output, expected_output),
+            f"{ipynb_uri} => {output} != {expected_output}",
         )
 
 

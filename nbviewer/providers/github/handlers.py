@@ -125,10 +125,7 @@ class GitHubUserHandler(GithubClientMixin, BaseHandler):
         prev_url, next_url = self.get_page_links(response)
         repos = json.loads(response_text(response))
 
-        entries = []
-        for repo in repos:
-            entries.append(dict(url=repo["name"], name=repo["name"]))
-
+        entries = [dict(url=repo["name"], name=repo["name"]) for repo in repos]
         provider_url = "{github_url}{user}".format(
             user=user, github_url=self.github_url
         )
@@ -201,7 +198,7 @@ class GitHubTreeHandler(GithubClientMixin, BaseHandler):
     @cached
     async def get(self, user, repo, ref, path):
         if not self.request.uri.endswith("/"):
-            self.redirect(self.request.uri + "/")
+            self.redirect(f"{self.request.uri}/")
             return
         path = path.rstrip("/")
         with self.catch_client_error():
@@ -234,9 +231,10 @@ class GitHubTreeHandler(GithubClientMixin, BaseHandler):
         # See: https://github.com/jupyter/nbviewer/issues/324
         example_file_url = contents[0]["html_url"]
         user, repo = re.match(
-            r"^" + self.github_url + "(?P<user>[^\/]+)/(?P<repo>[^\/]+)/.*",
+            f"^{self.github_url}" + "(?P<user>[^\/]+)/(?P<repo>[^\/]+)/.*",
             example_file_url,
         ).group("user", "repo")
+
 
         base_url = "/github/{user}/{repo}/tree/{ref}".format(
             user=user, repo=repo, ref=ref
@@ -249,13 +247,11 @@ class GitHubTreeHandler(GithubClientMixin, BaseHandler):
         breadcrumbs = [{"url": base_url, "name": repo}]
         breadcrumbs.extend(self.breadcrumbs(path, base_url))
 
-        entries = []
         dirs = []
         ipynbs = []
         others = []
         for file in contents:
-            e = {}
-            e["name"] = file["name"]
+            e = {"name": file["name"]}
             if file["type"] == "dir":
                 e["url"] = "/github/{user}/{repo}/tree/{ref}/{path}".format(
                     user=user, repo=repo, ref=ref, path=file["path"]
@@ -280,7 +276,7 @@ class GitHubTreeHandler(GithubClientMixin, BaseHandler):
                 e["class"] = "fa-folder-close"
                 others.append(e)
 
-        entries.extend(dirs)
+        entries = list(dirs)
         entries.extend(ipynbs)
         entries.extend(others)
 
@@ -314,9 +310,7 @@ class GitHubTreeHandler(GithubClientMixin, BaseHandler):
 
         for i, ref_type in enumerate(ref_types):
             with self.catch_client_error():
-                response = await getattr(self.github_client, "get_%s" % ref_type)(
-                    user, repo
-                )
+                response = await getattr(self.github_client, f"get_{ref_type}")(user, repo)
             ref_data[i] = json.loads(response_text(response))
 
         return ref_data
@@ -405,10 +399,7 @@ class GitHubBlobHandler(GithubClientMixin, RenderingHandler):
 
             try:
                 # filedata may be bytes, but we need text
-                if isinstance(filedata, bytes):
-                    nbjson = filedata.decode("utf-8")
-                else:
-                    nbjson = filedata
+                nbjson = filedata.decode("utf-8") if isinstance(filedata, bytes) else filedata
             except Exception as e:
                 self.log.error("Failed to decode notebook: %s", raw_url, exc_info=True)
                 raise web.HTTPError(400)
@@ -426,10 +417,11 @@ class GitHubBlobHandler(GithubClientMixin, RenderingHandler):
                 provider_url=blob_url,
                 executor_url=executor_url,
                 breadcrumbs=breadcrumbs,
-                msg="file from GitHub: %s" % raw_url,
+                msg=f"file from GitHub: {raw_url}",
                 public=True,
-                **self.PROVIDER_CTX
+                **self.PROVIDER_CTX,
             )
+
         else:
             mime, enc = mimetypes.guess_type(path)
             self.set_header("Content-Type", mime or "text/plain")
@@ -534,23 +526,22 @@ def uri_rewrites(rewrites=[]):
 
         github_rewrites.extend(
             [
-                # raw view
                 (
-                    r"^" + github_base_url + r"([^\/]+)/([^\/]+)/raw/([^\/]+)/(.*)",
+                    f"^{github_base_url}"
+                    + r"([^\/]+)/([^\/]+)/raw/([^\/]+)/(.*)",
                     "/github/{0}/{1}/blob/{2}/{3}",
                 ),
-                # trees & blobs
                 (
-                    r"^" + github_base_url + r"([\w\-]+)/([^\/]+)/(blob|tree)/(.*)$",
+                    f"^{github_base_url}"
+                    + r"([\w\-]+)/([^\/]+)/(blob|tree)/(.*)$",
                     "/github/{0}/{1}/{2}/{3}",
                 ),
-                # user/repo
                 (
-                    r"^" + github_base_url + r"([\w\-]+)/([^\/]+)/?$",
+                    f"^{github_base_url}" + r"([\w\-]+)/([^\/]+)/?$",
                     "/github/{0}/{1}/tree/master",
                 ),
-                # user
-                (r"^" + github_base_url + r"([\w\-]+)/?$", "/github/{0}/"),
+                (f"^{github_base_url}" + r"([\w\-]+)/?$", "/github/{0}/"),
             ]
         )
+
     return rewrites + github_rewrites

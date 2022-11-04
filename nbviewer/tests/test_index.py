@@ -7,5 +7,5 @@ from nbviewer import index
 class ElasticSearchTestCase(NBViewerTestCase):
     @skip
     @classmethod
-    def test_finish_notebook(self):
+    def test_finish_notebook(cls):
         pass

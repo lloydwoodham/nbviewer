@@ -19,7 +19,7 @@ class CustomTemplateStub(object):
 class TemplatePathCLITestCase(NBViewerTestCase, CustomTemplateStub):
     @classmethod
     def get_server_cmd(cls):
-        return super().get_server_cmd() + ["--template-path={}".format(tmpl_fixture)]
+        return super().get_server_cmd() + [f"--template-path={tmpl_fixture}"]
 
 
 class TemplatePathEnvTestCase(NBViewerTestCase, CustomTemplateStub):

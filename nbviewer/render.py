@@ -28,7 +28,7 @@ def render_notebook(format, nb, url=None, forced_theme=None, config=None):
         # instances are cached by class to avoid repeated instantiation of duplicates
         exporter_cls = exporter
         if exporter_cls not in exporters:
-            app_log.info("instantiating %s" % exporter_cls.__name__)
+            app_log.info(f"instantiating {exporter_cls.__name__}")
             exporters[exporter_cls] = exporter_cls(config=config, log=app_log)
         exporter = exporters[exporter_cls]
 
@@ -51,7 +51,7 @@ def render_notebook(format, nb, url=None, forced_theme=None, config=None):
         name = url.rsplit("/")[-1]
 
     if not name.endswith(".ipynb"):
-        name = name + ".ipynb"
+        name = f"{name}.ipynb"
 
     html, resources = exporter.from_notebook_node(nb)
 
