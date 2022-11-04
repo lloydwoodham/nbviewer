@@ -16,7 +16,7 @@ class GitHubTestCase(NBViewerTestCase):
     @skip_unless_github_auth
     def ipython_example(self, *parts, **kwargs):
         ref = kwargs.get("ref", "rel-2.0.0")
-        return self.url("github/ipython/ipython/blob/%s/examples" % ref, *parts)
+        return self.url(f"github/ipython/ipython/blob/{ref}/examples", *parts)
 
     @skip_unless_github_auth
     def test_github(self):

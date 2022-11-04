@@ -52,7 +52,7 @@ class SlidesGitHubTestCase(NBViewerTestCase):
     def ipython_example(self, *parts, **kwargs):
         ref = kwargs.get("ref", "rel-2.0.0")
         return self.url(
-            "/format/slides/github/ipython/ipython/blob/%s/examples" % ref, *parts
+            f"/format/slides/github/ipython/ipython/blob/{ref}/examples", *parts
         )
 
     @skip_unless_github_auth

@@ -87,8 +87,7 @@ class UserGistsHandler(GistClientMixin, BaseHandler):
         gists = json.loads(response_text(response))
         entries = []
         for gist in gists:
-            notebooks = [f for f in gist["files"] if f.endswith(".ipynb")]
-            if notebooks:
+            if notebooks := [f for f in gist["files"] if f.endswith(".ipynb")]:
                 entries.append(
                     dict(
                         id=gist["id"],
@@ -125,9 +124,7 @@ class GistHandler(GistClientMixin, RenderingHandler):
         gist_id = gist["id"]
 
         if user is None:
-            # redirect to /gist/user/gist_id if no user given
-            owner_dict = gist.get("owner", {})
-            if owner_dict:
+            if owner_dict := gist.get("owner", {}):
                 user = owner_dict["login"]
             else:
                 user = "anonymous"
@@ -135,7 +132,7 @@ class GistHandler(GistClientMixin, RenderingHandler):
                 format=self.format_prefix, user=user, gist_id=gist_id
             )
             if filename:
-                new_url = new_url + "/" + filename
+                new_url = f"{new_url}/{filename}"
             self.redirect(self.from_base(new_url))
             return
 
@@ -151,15 +148,13 @@ class GistHandler(GistClientMixin, RenderingHandler):
         """
         user, gist_id, gist, and files are (most) of the values returned by parse_gist
         """
-        entries = []
         ipynbs = []
         others = []
 
         for file in files.values():
-            e = {}
-            e["name"] = file["filename"]
+            e = {"name": file["filename"]}
             if file["filename"].endswith(".ipynb"):
-                e["url"] = quote("/%s/%s" % (gist_id, file["filename"]))
+                e["url"] = quote(f'/{gist_id}/{file["filename"]}')
                 e["class"] = "fa-book"
                 ipynbs.append(e)
             else:
@@ -179,7 +174,7 @@ class GistHandler(GistClientMixin, RenderingHandler):
                 e["class"] = "fa-share"
                 others.append(e)
 
-        entries.extend(ipynbs)
+        entries = list(ipynbs)
         entries.extend(others)
 
         # Enable a binder navbar icon if a binder base URL is configured
@@ -243,14 +238,12 @@ class GistHandler(GistClientMixin, RenderingHandler):
         else:
             content = file["content"]
 
-        if many_files_gist and not filename.endswith(".ipynb"):
-            self.set_header("Content-Type", file.get("type") or "text/plain")
-            # cannot redirect because of X-Frame-Content
-            self.finish(content)
-            return
-
-        else:
+        if not many_files_gist or filename.endswith(".ipynb"):
             return content
+        self.set_header("Content-Type", file.get("type") or "text/plain")
+        # cannot redirect because of X-Frame-Content
+        self.finish(content)
+        return
 
     # Only called by file_get
     async def deliver_notebook(self, user, gist_id, filename, gist, file, content):
@@ -276,11 +269,11 @@ class GistHandler(GistClientMixin, RenderingHandler):
         await self.finish_notebook(
             content,
             file["raw_url"],
-            msg="gist: %s" % gist_id,
+            msg=f"gist: {gist_id}",
             public=gist["public"],
             provider_url=gist["html_url"],
             executor_url=executor_url,
-            **self.PROVIDER_CTX
+            **self.PROVIDER_CTX,
         )
 
     @cached
@@ -318,9 +311,9 @@ class GistRedirectHandler(BaseHandler):
     """redirect old /<gist-id> to new /gist/<gist-id>"""
 
     def get(self, gist_id, file=""):
-        new_url = "%s/gist/%s" % (self.format_prefix, gist_id)
+        new_url = f"{self.format_prefix}/gist/{gist_id}"
         if file:
-            new_url = "%s/%s" % (new_url, file)
+            new_url = f"{new_url}/{file}"
 
         self.log.info("Redirecting %s to %s", self.request.uri, new_url)
         self.redirect(self.from_base(new_url))
@@ -354,10 +347,8 @@ def uri_rewrites(rewrites=[]):
             os.environ.get("GITHUB_API_URL").split("/api/v3")[0], "gist/"
         )
         gist_rewrites.extend(
-            [
-                # Fetching the Gist ID which is embedded in the URL, but with a different base URL
-                (r"^" + gist_base_url + r"([^\/]+/)?([a-f0-9]+)/?$", "/{1}")
-            ]
+            [(f"^{gist_base_url}" + r"([^\/]+/)?([a-f0-9]+)/?$", "/{1}")]
         )
+
 
     return gist_rewrites + rewrites

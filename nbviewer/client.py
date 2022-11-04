@@ -55,10 +55,7 @@ class NBViewerAsyncHTTPClient(object):
         if request.user_agent is None:
             request.user_agent = "Tornado-Async-Client"
 
-        # The future which will become the response upon awaiting.
-        response_future = asyncio.ensure_future(self.smart_fetch(request))
-
-        return response_future
+        return asyncio.ensure_future(self.smart_fetch(request))
 
     async def smart_fetch(self, request):
         """
@@ -83,8 +80,7 @@ class NBViewerAsyncHTTPClient(object):
             self.log.info("Upstream cache hit %s", name)
             # add cache headers, if any
             for resp_key, req_key in cache_headers.items():
-                value = cached_response.headers.get(resp_key)
-                if value:
+                if value := cached_response.headers.get(resp_key):
                     request.headers[req_key] = value
             return cached_response
         else:
@@ -112,10 +108,10 @@ class NBViewerAsyncHTTPClient(object):
         """Cache the response, if any cache headers we understand are present."""
         if not self.cache:
             return
-        with time_block("Upstream cache set %s" % name, logger=self.log):
+        with time_block(f"Upstream cache set {name}", logger=self.log):
             # cache the response
             try:
                 pickle_response = pickle.dumps(response, pickle.HIGHEST_PROTOCOL)
                 await self.cache.set(cache_key, pickle_response)
             except Exception:
-                self.log.error("Upstream cache failed %s" % name, exc_info=True)
+                self.log.error(f"Upstream cache failed {name}", exc_info=True)

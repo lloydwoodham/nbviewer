@@ -73,8 +73,9 @@ class LocalFileHandler(RenderingHandler):
         # Escape commas to workaround Chrome issue with commas in download filenames
         self.set_header(
             "Content-Disposition",
-            "attachment; filename={};".format(filename.replace(",", "_")),
+            f'attachment; filename={filename.replace(",", "_")};',
         )
+
 
         content = web.StaticFileHandler.get_content(fullpath)
         if isinstance(content, bytes):
@@ -141,8 +142,7 @@ class LocalFileHandler(RenderingHandler):
             await self.cache_and_finish(html)
             return
 
-        is_download = self.get_query_arguments("download")
-        if is_download:
+        if is_download := self.get_query_arguments("download"):
             await self.download(fullpath)
             return
 
@@ -169,7 +169,7 @@ class LocalFileHandler(RenderingHandler):
         await self.finish_notebook(
             nbdata,
             download_url="?download",
-            msg="file from localfile: %s" % path,
+            msg=f"file from localfile: {path}",
             public=False,
             breadcrumbs=self.breadcrumbs(path),
             title=os.path.basename(path),
@@ -230,7 +230,6 @@ class LocalFileHandler(RenderingHandler):
         str
             Rendered HTML
         """
-        entries = []
         dirs = []
         ipynbs = []
 
@@ -251,9 +250,7 @@ class LocalFileHandler(RenderingHandler):
             if not self.can_show(absf):
                 continue
 
-            entry = {}
-            entry["name"] = f
-
+            entry = {"name": f}
             # We need to make UTC timestamps conform to true ISO-8601 by
             # appending Z(ulu). Without a timezone, the spec says it should be
             # treated as local time which is not what we want and causes
@@ -263,14 +260,14 @@ class LocalFileHandler(RenderingHandler):
             if os.path.isdir(absf):
                 st = os.stat(absf)
                 dt = datetime.utcfromtimestamp(st.st_mtime)
-                entry["modtime"] = dt.isoformat() + "Z"
+                entry["modtime"] = f"{dt.isoformat()}Z"
                 entry["url"] = url_path_join(self._localfile_path, path, f)
                 entry["class"] = "fa fa-folder-open"
                 dirs.append(entry)
             elif f.endswith(".ipynb"):
                 st = os.stat(absf)
                 dt = datetime.utcfromtimestamp(st.st_mtime)
-                entry["modtime"] = dt.isoformat() + "Z"
+                entry["modtime"] = f"{dt.isoformat()}Z"
                 entry["url"] = url_path_join(self._localfile_path, path, f)
                 entry["class"] = "fa fa-book"
                 ipynbs.append(entry)
@@ -278,16 +275,15 @@ class LocalFileHandler(RenderingHandler):
         dirs.sort(key=lambda e: e["name"])
         ipynbs.sort(key=lambda e: e["name"])
 
-        entries.extend(dirs)
+        entries = list(dirs)
         entries.extend(ipynbs)
 
-        html = self.render_dirview_template(
+        return self.render_dirview_template(
             entries=entries,
             breadcrumbs=self.breadcrumbs(path),
             title=url_path_join(path, "/"),
             **namespace
         )
-        return html
 
 
 def default_handlers(handlers=[], **handler_names):

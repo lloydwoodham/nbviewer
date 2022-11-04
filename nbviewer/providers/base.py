@@ -120,8 +120,9 @@ class BaseHandler(web.RequestHandler):
                         self.hub_cookie_name,
                         quote(encrypted_cookie, safe=""),
                     ),
-                    headers={"Authorization": "token " + self.hub_api_token},
+                    headers={"Authorization": f"token {self.hub_api_token}"},
                 )
+
             except httpclient.HTTPError as ex:
                 if ex.response.code == 404:
                     # hub does not recognize the cookie == not authenticated
@@ -249,11 +250,11 @@ class BaseHandler(web.RequestHandler):
                 self.settings["statsd_port"],
                 self.settings["statsd_prefix"] + "." + type(self).__name__,
             )
-            return self._statsd
         else:
             # return an empty mock object!
             self._statsd = EmptyClass()
-            return self._statsd
+
+        return self._statsd
 
     # ---------------------------------------------------------------
     # template rendering
@@ -269,7 +270,7 @@ class BaseHandler(web.RequestHandler):
         return self.settings["jinja2_env"].get_template(name)
 
     def render_template(self, name, **namespace):
-        namespace.update(self.template_namespace)
+        namespace |= self.template_namespace
         template = self.get_template(name)
         return template.render(**namespace)
 
@@ -336,12 +337,10 @@ class BaseHandler(web.RequestHandler):
         str_exc = str(exc)
 
         # strip the unhelpful 599 prefix
-        if str_exc.startswith("HTTP 599: "):
-            str_exc = str_exc[10:]
-
+        str_exc = str_exc.removeprefix("HTTP 599: ")
         if (msg is None) and body and len(body) < 100:
             # if it's a short plain-text error message, include it
-            msg = "%s (%s)" % (str_exc, escape(body))
+            msg = f"{str_exc} ({escape(body)})"
 
         if not msg:
             msg = str_exc
@@ -359,13 +358,11 @@ class BaseHandler(web.RequestHandler):
         elif exc.code >= 500:
             # 5XX, server error, but not this server
             code = 502
+        elif exc.code == 404:
+            code = 404
+            msg = f"Remote {msg}"
         else:
-            # client-side error, blame our client
-            if exc.code == 404:
-                code = 404
-                msg = "Remote %s" % msg
-            else:
-                code = 400
+            code = 400
 
         return code, msg
 
@@ -408,7 +405,7 @@ class BaseHandler(web.RequestHandler):
         handle default arguments and wrapping exceptions
         """
         kw = {}
-        kw.update(self.fetch_kwargs)
+        kw |= self.fetch_kwargs
         kw.update(overrides)
         with self.catch_client_error():
             response = await self.client.fetch(url, **kw)
@@ -427,9 +424,7 @@ class BaseHandler(web.RequestHandler):
             except Exception:
                 pass
 
-            # construct the custom reason, if defined
-            reason = getattr(exception, "reason", "")
-            if reason:
+            if reason := getattr(exception, "reason", ""):
                 status_message = reason
 
         # build template namespace
@@ -454,12 +449,11 @@ class BaseHandler(web.RequestHandler):
 
     @property
     def cache_headers(self):
-        # are there other headers to cache?
-        h = {}
-        for key in ("Content-Type",):
-            if key in self._headers:
-                h[key] = self._headers[key]
-        return h
+        return {
+            key: self._headers[key]
+            for key in ("Content-Type",)
+            if key in self._headers
+        }
 
     _cache_key = None
     _cache_key_attr = "uri"
@@ -476,7 +470,7 @@ class BaseHandler(web.RequestHandler):
     def truncate(self, s, limit=256):
         """Truncate long strings"""
         if len(s) > limit:
-            s = "%s...%s" % (s[: limit // 2], s[limit // 2 :])
+            s = f"{s[:limit // 2]}...{s[limit // 2:]}"
         return s
 
     async def cache_and_finish(self, content=""):
@@ -512,7 +506,7 @@ class BaseHandler(web.RequestHandler):
         log = self.log.info if expiry > self.cache_expiry_min else self.log.debug
         log("Caching (expiry=%is) %s", expiry, short_url)
         try:
-            with time_block("Cache set %s" % short_url, logger=self.log):
+            with time_block(f"Cache set {short_url}", logger=self.log):
                 await self.cache.set(
                     self.cache_key, cache_data, int(time.time() + expiry)
                 )
@@ -552,12 +546,9 @@ def cached(method):
             )
 
         try:
-            with time_block("Cache get %s" % short_url, logger=self.log):
+            with time_block(f"Cache get {short_url}", logger=self.log):
                 cached_pickle = await self.cache.get(self.cache_key)
-            if cached_pickle is not None:
-                cached = pickle.loads(cached_pickle)
-            else:
-                cached = None
+            cached = pickle.loads(cached_pickle) if cached_pickle is not None else None
         except Exception as e:
             self.log.error("Exception getting %s from cache", short_url, exc_info=True)
             cached = None
@@ -663,7 +654,7 @@ class RenderingHandler(BaseHandler):
         self, body, nb, download_url, json_notebook, **namespace
     ):
         return self.render_template(
-            "formats/%s.html" % self.format,
+            f"formats/{self.format}.html",
             body=body,
             nb=nb,
             download_url=download_url,
@@ -675,7 +666,7 @@ class RenderingHandler(BaseHandler):
                 self.base_url, "/"
             ),
             date=datetime.utcnow().strftime(self.date_fmt),
-            **namespace
+            **namespace,
         )
 
     async def finish_notebook(
@@ -709,9 +700,7 @@ class RenderingHandler(BaseHandler):
 
         try:
             self.log.debug("Requesting render of %s", download_url)
-            with time_block(
-                "Rendered %s" % download_url, logger=self.log, debug_limit=0
-            ):
+            with time_block(f"Rendered {download_url}", logger=self.log, debug_limit=0):
                 self.log.info(
                     "Rendering %d B notebook from %s", len(json_notebook), download_url
                 )
@@ -764,16 +753,16 @@ class FilesRedirectHandler(BaseHandler):
 
     def get(self, before_files, after_files):
         self.log.info("Redirecting %s to %s", before_files, after_files)
-        self.redirect("%s/%s" % (before_files, after_files))
+        self.redirect(f"{before_files}/{after_files}")
 
 
 class AddSlashHandler(BaseHandler):
     """redirector for URLs that should always have trailing slash"""
 
     def get(self, *args, **kwargs):
-        uri = self.request.path + "/"
+        uri = f"{self.request.path}/"
         if self.request.query:
-            uri = "%s?%s" % (uri, self.request.query)
+            uri = f"{uri}?{self.request.query}"
         self.redirect(uri)
 
 
@@ -783,5 +772,5 @@ class RemoveSlashHandler(BaseHandler):
     def get(self, *args, **kwargs):
         uri = self.request.path.rstrip("/")
         if self.request.query:
-            uri = "%s?%s" % (uri, self.request.query)
+            uri = f"{uri}?{self.request.query}"
         self.redirect(uri)

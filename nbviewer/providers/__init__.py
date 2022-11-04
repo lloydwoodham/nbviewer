@@ -6,11 +6,12 @@
 # -----------------------------------------------------------------------------
 
 default_providers = [
-    "nbviewer.providers.{}".format(prov) for prov in ["url", "github", "gist"]
+    f"nbviewer.providers.{prov}" for prov in ["url", "github", "gist"]
 ]
 
+
 default_rewrites = [
-    "nbviewer.providers.{}".format(prov)
+    f"nbviewer.providers.{prov}"
     for prov in ["gist", "github", "dropbox", "url"]
 ]
 
@@ -70,8 +71,7 @@ def _load_provider_feature(feature, providers, **handler_names):
     provider_types = [provider.rsplit(".", 1)[-1] for provider in providers]
 
     if "github" in provider_types:
-        provider_types.append("github_blob")
-        provider_types.append("github_tree")
+        provider_types.extend(("github_blob", "github_tree"))
         provider_types.remove("github")
 
     provider_handlers = {}
@@ -79,7 +79,7 @@ def _load_provider_feature(feature, providers, **handler_names):
     # Ex: provider_type = 'url'
     for provider_type in provider_types:
         # Ex: provider_handler_key = 'url_handler'
-        provider_handler_key = provider_type + "_handler"
+        provider_handler_key = f"{provider_type}_handler"
         try:
             # Ex: handler_names['url_handler']
             handler_names[provider_handler_key]
@@ -111,5 +111,4 @@ def _load_handler_from_location(handler_location):
     module_name, handler_name = tuple(handler_location.rsplit(".", 1))
 
     module = __import__(module_name, fromlist=[handler_name])
-    handler = getattr(module, handler_name)
-    return handler
+    return getattr(module, handler_name)

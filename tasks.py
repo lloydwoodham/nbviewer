@@ -19,7 +19,7 @@ NOTEBOOK_CHECKSUM = "573e0ae650c5d76b18b6e564ba6d21bf321d00847de1d215b418acb64f0
 APP_ROOT = os.path.dirname(__file__)
 NPM_BIN = os.path.join(APP_ROOT, "node_modules", ".bin")
 NOTEBOOK_STATIC_PATH = os.path.join(
-    APP_ROOT, "notebook-%s" % NOTEBOOK_VERSION, "notebook", "static"
+    APP_ROOT, f"notebook-{NOTEBOOK_VERSION}", "notebook", "static"
 )
 
 
@@ -31,9 +31,10 @@ def test(ctx):
 @invoke.task
 def bower(ctx):
     ctx.run(
-        "cd {}/nbviewer/static &&".format(APP_ROOT)
-        + " {}/bower install".format(NPM_BIN)
-        + " --config.interactive=false --allow-root"
+        (
+            (f"cd {APP_ROOT}/nbviewer/static &&" + f" {NPM_BIN}/bower install")
+            + " --config.interactive=false --allow-root"
+        )
     )
 
 
@@ -42,10 +43,10 @@ def notebook_static(ctx):
     if os.path.exists(NOTEBOOK_STATIC_PATH):
         return
 
-    fname = "notebook-%s.tar.gz" % NOTEBOOK_VERSION
+    fname = f"notebook-{NOTEBOOK_VERSION}.tar.gz"
     nb_archive = os.path.join(APP_ROOT, fname)
     if not os.path.exists(nb_archive):
-        print("Downloading from pypi -> %s" % nb_archive)
+        print(f"Downloading from pypi -> {nb_archive}")
         ctx.run(
             " ".join(
                 map(
@@ -55,7 +56,7 @@ def notebook_static(ctx):
                         "-m",
                         "pip",
                         "download",
-                        "notebook=={}".format(NOTEBOOK_VERSION),
+                        f"notebook=={NOTEBOOK_VERSION}",
                         "--no-deps",
                         "-d",
                         APP_ROOT,
@@ -65,12 +66,13 @@ def notebook_static(ctx):
                 )
             )
         )
+
     with open(nb_archive, "rb") as f:
         checksum = hashlib.sha256(f.read()).hexdigest()
     if checksum != NOTEBOOK_CHECKSUM:
         print("Notebook sdist checksum mismatch", file=sys.stderr)
-        print("Expected: %s" % NOTEBOOK_CHECKSUM, file=sys.stderr)
-        print("Got: %s" % checksum, file=sys.stderr)
+        print(f"Expected: {NOTEBOOK_CHECKSUM}", file=sys.stderr)
+        print(f"Got: {checksum}", file=sys.stderr)
         sys.exit(1)
     with TarFile.open(nb_archive, "r:gz") as nb_archive_file:
         print("Extract {0} in {1}".format(nb_archive, nb_archive_file.extractall()))
@@ -85,13 +87,13 @@ def less(ctx, debug=False):
         extra = " --clean-css='--s1 --advanced --compatibility=ie8'"
 
     tmpl = (
-        "cd {}/nbviewer/static/less ".format(APP_ROOT)
-        + " && {}/lessc".format(NPM_BIN)
+        (f"cd {APP_ROOT}/nbviewer/static/less " + f" && {NPM_BIN}/lessc")
         + " {1} "
         " --include-path={2}"
         " --autoprefix='> 1%'"
         " {0}.less ../build/{0}.css"
     )
+
 
     args = (extra, NOTEBOOK_STATIC_PATH)
 
@@ -165,7 +167,7 @@ def git_info(ctx):
     except Exception as e:
         print("Failed to get git info", e)
         return
-    print("Writing git info to %s" % GIT_INFO_JSON)
+    print(f"Writing git info to {GIT_INFO_JSON}")
     with open(GIT_INFO_JSON, "w") as f:
         json.dump(info, f)
     sys.path.pop(0)

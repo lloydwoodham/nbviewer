@@ -16,11 +16,12 @@ def test_generate_config():
             "-m",
             "nbviewer",
             "--generate-config",
-            "--config-file={}".format(cfg_file),
+            f"--config-file={cfg_file}",
         ],
         stdout=PIPE,
         stdin=PIPE,
     )
+
     out, _ = p.communicate(b"n")
     out = out.decode("utf8", "replace")
     assert os.path.exists(cfg_file)
@@ -34,11 +35,12 @@ def test_generate_config():
             "-m",
             "nbviewer",
             "--generate-config",
-            "--config-file={}".format(cfg_file),
+            f"--config-file={cfg_file}",
         ],
         stdout=PIPE,
         stdin=PIPE,
     )
+
     out, _ = p.communicate(b"x\ny")
     out = out.decode("utf8", "replace")
     assert os.path.exists(cfg_file)
